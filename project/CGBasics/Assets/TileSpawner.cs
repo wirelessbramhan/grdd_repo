@@ -7,23 +7,23 @@ public class TileSpawner : MonoBehaviour
 {
     public Vector2 resolution = new(128, 72);
     public Image TilePrefab;
-    public RectTransform refreshPanel;
-    public float widthOffset;
-    public bool _canDraw;
-    public int callCount, refreshCount;
+    public ScanType ScanType;
+    private float _widthOffset = 10.0f;
+    public bool ShouldDrawContinous, isInterlaced;
+    private int _callCount, _refreshCount;
 
     #region 3. Single Frame "Buffer"
-    public List<Image> tiles;
-    public FrameBuffer buffer;
-    
+    private List<Image> tiles;
+    private FrameBuffer buffer;
+
     //Buffered Draw Call
     private IEnumerator DrawCall(int cycles)
     {
         tiles.Clear();
-        callCount = 0;
-        refreshCount = 0;
+        _callCount = 0;
+        _refreshCount = 0;
 
-        while (callCount < cycles)
+        while (_callCount < cycles)
         {
             //Progressive Vertical Scan
             for (int height = 0; height < resolution.y; height++)
@@ -42,7 +42,7 @@ public class TileSpawner : MonoBehaviour
 
                     var rect = tile.GetComponent<RectTransform>();
                     //rect.position = new(0 + 1 * i, 0);
-                    rect.transform.localPosition = new(0 + widthOffset * width, height);
+                    rect.transform.localPosition = new(0 + _widthOffset * width, height);
 
                     //Debug.Log(frac);
 
@@ -55,9 +55,9 @@ public class TileSpawner : MonoBehaviour
                 yield return null;
             }
 
-            callCount++;
+            _callCount++;
 
-            Debug.Log("draw call" + callCount);
+            Debug.Log("draw call" + _callCount);
 
             yield return null;
 
@@ -70,238 +70,85 @@ public class TileSpawner : MonoBehaviour
 
             yield return null;
 
-            refreshCount++;
+            _refreshCount++;
 
-            Debug.Log("vertical refresh" + refreshCount);
+            Debug.Log("vertical refresh" + _refreshCount);
         }
     }
 
     #endregion
 
-    //Start is called once before the first execution of Update after the MonoBehaviour is created
-    IEnumerator Start()
-   {
-        #region 1. Raster scanning
-        //float count = 0;
+    #region 1. Raster scanning
 
-        ////Draw line
-        //for (int width = 0; width < 128; width++)
-        //{
-        //    var tile = Instantiate(TilePrefab, transform);
-
-        //    tile.gameObject.name = "tile" + width;
-
-        //    var rect = tile.GetComponent<RectTransform>();
-        //    rect.transform.localPosition = new(0 + widthOffset * width, height);
-
-        //    count++;
-        //    float frac = count / 128;
-        //    //Debug.Log(frac);
-
-        //    Color tileColor = new(frac, frac, frac, 1.0f);
-        //    tile.color = tileColor;
-
-        //    tile.gameObject.SetActive(true);
-        //    yield return null;
-        //}
-
-        //float pixelCount = 0;
-
-        ////Vertical Scan
-        //for (int height = 0; height < resolution.y; height++)
-        //{
-        //    //Draw line
-        //    for (int width = 0; width < resolution.x; width++)
-        //    {
-        //        var tile = Instantiate(TilePrefab, transform);
-
-        //        tile.gameObject.name = "tile" + width;
-
-        //        var rect = tile.GetComponent<RectTransform>();
-        //        //rect.position = new(0 + 1 * i, 0);
-        //        rect.transform.localPosition = new(0 + widthOffset * width, height);
-
-        //        pixelCount++;
-        //        float frac = pixelCount / (resolution.x * resolution.y);
-        //        //Debug.Log(frac);
-
-        //        Color tileColor = new(frac, frac, frac, 1.0f);
-        //        tile.color = tileColor;
-
-        //        tile.gameObject.SetActive(true);
-        //    }
-
-        //    yield return null;
-        //}
-
-        #endregion
-
-        //StartCoroutine(DrawCall(10));
-        
-        buffer = new FrameBuffer(TilePrefab);
-        
-        Vector4 randomColor = new Vector4(UnityEngine.Random.Range(0.0f, 1.0f), UnityEngine.Random.Range(0.0f, 1.0f), UnityEngine.Random.Range(0.0f, 1.0f), 1.0f);
-        
-        StartCoroutine(buffer.Init(resolution, transform));
-        
-        yield return new WaitUntil(() => buffer._canDraw);
-        StartCoroutine(buffer.DrawPixels());
-    }
-
-    // Update is called once per frame
-    void Update()
+    private IEnumerator DrawLine(int height = 0, bool forward = true)
     {
-        if (_canDraw)
+        float count = 0;
+
+        if (forward)
         {
-            //StartCoroutine(DrawCall(false));
-            StartCoroutine(buffer.DrawPixels());
-        }
-    }
-
-    #region 2. interlacing
-
-    private IEnumerator DrawCall(bool interlace)
-    {
-        _canDraw = false;
- 
-        float pixelCount = 0;
-
-        if (!interlace)
-        {
-            //Progressive Vertical Scan
-            for (int height = 0; height < resolution.y; height++)
+            //Draw line Left to Right
+            for (int width = 0; width < resolution.x; width++)
             {
-                //Draw line
-                for (int width = 0; width < resolution.x; width++)
-                {
-                    var tile = Instantiate(TilePrefab, transform);
+                var tile = Instantiate(TilePrefab, transform);
 
-                    tile.gameObject.name = "tile" + width;
+                tile.gameObject.name = "tile" + width;
 
-                    var rect = tile.GetComponent<RectTransform>();
-                    //rect.position = new(0 + 1 * i, 0);
-                    rect.transform.localPosition = new(0 + widthOffset * width, height);
+                var rect = tile.GetComponent<RectTransform>();
+                rect.transform.localPosition = new(0 + _widthOffset * width, height);
 
-                    pixelCount++;
-                    float frac = pixelCount / (resolution.x * resolution.y);
-                    //Debug.Log(frac);
+                count++;
+                float frac = count / 128;
+                //Debug.Log(frac);
 
-                    Vector4 randomColor = new Vector4(UnityEngine.Random.Range(0.0f, 1.0f), UnityEngine.Random.Range(0.0f, 1.0f), UnityEngine.Random.Range(0.0f, 1.0f), 1.0f);
-                    tile.color = randomColor;
+                Color tileColor = new(frac, frac, frac, 1.0f);
+                tile.color = tileColor;
 
-                    tile.gameObject.SetActive(true);
-                }
-
+                tile.gameObject.SetActive(true);
                 yield return null;
             }
         }
 
         else
         {
-            //Interlacing Vertical Scan
-            int frameCount = 1;
-
-            //Render even lines for even frames
-            if (frameCount % 2 == 0)
+            //Draw line Right to Left
+            for (int width = (int)resolution.x; width > 0; width--)
             {
-                for (int height = 0; height < resolution.y; height++)
-                {
-                    if (height % 2 == 0)
-                    {
-                        //Draw line
-                        for (int width = 0; width < resolution.x; width++)
-                        {
-                            var tile = Instantiate(TilePrefab, transform);
-
-                            tile.gameObject.name = "tile" + width;
-
-                            var rect = tile.GetComponent<RectTransform>();
-                            //rect.position = new(0 + 1 * i, 0);
-                            rect.transform.localPosition = new(0 + widthOffset * width, height);
-
-                            pixelCount++;
-                            float frac = pixelCount / (resolution.x * resolution.y);
-                            //Debug.Log(frac);
-
-                            Vector4 randomColor = new Vector4(UnityEngine.Random.Range(0.0f, 1.0f), UnityEngine.Random.Range(0.0f, 1.0f), UnityEngine.Random.Range(0.0f, 1.0f), 1.0f);
-                            tile.color = randomColor;
-
-                            tile.gameObject.SetActive(true);
-                        }
-                    }
-
-                    yield return null;
-                }
-            }
-
-            //Render odd lines for odd frames
-            for (int height = 0; height < resolution.y; height++)
-            {
-                if (height % 2 != 0)
-                {
-                    //Draw line
-                    for (int width = 0; width < resolution.x; width++)
-                    {
-                        var tile = Instantiate(TilePrefab, transform);
-
-                        tile.gameObject.name = "tile" + width;
-
-                        var rect = tile.GetComponent<RectTransform>();
-                        //rect.position = new(0 + 1 * i, 0);
-                        rect.transform.localPosition = new(0 + widthOffset * width, height);
-
-                        pixelCount++;
-                        float frac = pixelCount / (resolution.x * resolution.y);
-                        //Debug.Log(frac);
-
-                        Vector4 randomColor = new Vector4(UnityEngine.Random.Range(0.0f, 1.0f), UnityEngine.Random.Range(0.0f, 1.0f), UnityEngine.Random.Range(0.0f, 1.0f), 1.0f);
-                        tile.color = randomColor;
-
-                        tile.gameObject.SetActive(true);
-                    }
-                }
-
-                yield return null;
-            }
-
-            callCount++;
-            Debug.Log("draw call" + callCount);
-        }
-
-        //Clear Screen / Cull
-        for (int height = 0; height < resolution.y; height++)
-        {
-            //Draw line
-            for (int width = 0; width < resolution.x; width++)
-            {
-                var tile = Instantiate(TilePrefab, refreshPanel.transform);
+                var tile = Instantiate(TilePrefab, transform);
 
                 tile.gameObject.name = "tile" + width;
 
                 var rect = tile.GetComponent<RectTransform>();
-                //rect.position = new(0 + 1 * i, 0);
-                rect.transform.localPosition = new(0 + widthOffset * width, height);
+                rect.transform.localPosition = new(0 + _widthOffset * width, height);
 
-                pixelCount++;
-                float frac = pixelCount / (resolution.x * resolution.y);
+                count++;
+                float frac = count / 128;
                 //Debug.Log(frac);
-                tile.color = Color.black;
+
+                Color tileColor = new(frac, frac, frac, 1.0f);
+                tile.color = tileColor;
 
                 tile.gameObject.SetActive(true);
+                yield return null;
             }
+        }
+    }
+
+    private IEnumerator DrawGrid()
+    {
+        float pixelCount = 0;
+
+        //Vertical Scan
+        for (int height = 0; height < resolution.y; height++)
+        {
+            StartCoroutine(DrawLine(height));
 
             yield return null;
         }
-
-        refreshCount++;
-        Debug.Log("Vertical Refresh" + refreshCount);
-        _canDraw = true;
     }
 
-    private IEnumerator DrawCall()
+    private IEnumerator DrawBlack()
     {
-        _canDraw = false;
-        float pixelCount = 0;
+        ShouldDrawContinous = false;
 
         //Vertical Scan
         for (int height = 0; height < resolution.y; height++)
@@ -315,14 +162,9 @@ public class TileSpawner : MonoBehaviour
 
                 var rect = tile.GetComponent<RectTransform>();
                 //rect.position = new(0 + 1 * i, 0);
-                rect.transform.localPosition = new(0 + widthOffset * width, height);
+                rect.transform.localPosition = new(0 + _widthOffset * width, height);
 
-                pixelCount++;
-                float frac = pixelCount / (resolution.x * resolution.y);
-                //Debug.Log(frac);
-
-                Color tileColor = new(frac, frac, frac, 1.0f);
-                tile.color = tileColor;
+                tile.color = Color.black;
 
                 tile.gameObject.SetActive(true);
             }
@@ -330,13 +172,66 @@ public class TileSpawner : MonoBehaviour
             yield return null;
         }
 
-        if (pixelCount == (128 - 1) * (72 - 1))
-        {
-            _canDraw = true;
-        }
+        ShouldDrawContinous = true;
     }
 
     #endregion
+
+    //Start is called once before the first execution of Update after the MonoBehaviour is created
+    IEnumerator Start()
+    {
+        buffer = new FrameBuffer(TilePrefab);
+        
+        Vector4 randomColor = new Vector4(UnityEngine.Random.Range(0.0f, 1.0f), UnityEngine.Random.Range(0.0f, 1.0f), UnityEngine.Random.Range(0.0f, 1.0f), 1.0f);
+        
+        StartCoroutine(buffer.Init(resolution, transform));
+
+        yield return new WaitUntil(() => buffer._canDraw);
+        DrawCall(ScanType);
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        if (ShouldDrawContinous)
+        {
+            DrawCall(ScanType);
+        }
+    }
+
+    public void DrawCall(ScanType scanType)
+    {
+        switch (scanType)
+        {
+            case ScanType.none:
+                break;
+            case ScanType.line:
+                StartCoroutine(DrawLine());
+                break;
+            case ScanType.pixelBypixel:
+                StartCoroutine(DrawGrid());
+                break;
+            case ScanType.rasterScan:
+                
+                if (isInterlaced)
+                {
+                    //Draw Odd lines for Odd Frames
+                    //Draw Even lines for even frames, in reverse.
+                    //Hald Render time, Half accuracy. Screen tearing. Artifacts.
+                }
+
+                else
+                {
+                    //Draw everything pixel by pixel, line by line.
+                    //This Progressive scan. the "p" in 1080p.
+                }
+
+                break;
+            case ScanType.singleFrameBuffer:
+                StartCoroutine(buffer.DrawPixels());
+                break;
+        }
+    }
 }
 
 [System.Serializable]
@@ -419,4 +314,13 @@ public class FrameBuffer
 
         _canDraw = true;
     }
+}
+
+public enum ScanType
+{
+    none,
+    line,
+    pixelBypixel,
+    rasterScan,
+    singleFrameBuffer,
 }
